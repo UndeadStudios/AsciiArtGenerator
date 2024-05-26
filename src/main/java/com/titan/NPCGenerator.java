@@ -10,15 +10,21 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class NPCGenerator extends JFrame {
-    private JTextField npcIdField, posXField, posYField, heightField, rangeX1Field, rangeX2Field, rangeY1Field, rangeY2Field, walkTypeField, descriptionField;
-    private JCheckBox autoWalkCheckBox, multipleCoordsCheckBox, newFormatCheckBox;
+    private JTextField npcIdField, posXField, posYField, heightField, rangeX1Field, rangeX2Field, rangeY1Field, rangeY2Field, descriptionField, radiusField;
+    private JCheckBox autoWalkCheckBox, multipleCoordsCheckBox, newFormatCheckBox, anotherFormatCheckBox;
+    private JComboBox<String> walkTypeComboBox;
     private JButton generateButton, newLineButton, clearButton, copyButton;
     private JTextArea outputArea, coordListArea;
+
+    private static final String[] walkTypes = {
+            "STAND", "WALK", "FACE_NORTH", "FACE_SOUTH", "FACE_EAST", "FACE_WEST",
+            "FACE_NORTH_WEST", "FACE_NORTH_EAST", "FACE_SOUTH_WEST", "FACE_SOUTH_EAST"
+    };
 
     public NPCGenerator() {
         setTitle("Titan Autospawn Generator");
         setResizable(false);
-        setSize(750, 650);
+        setSize(750, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(null);
 
@@ -98,10 +104,9 @@ public class NPCGenerator extends JFrame {
         lblWalkType.setBounds(150, 140, 70, 20);
         lblWalkType.setForeground(Color.GREEN);
         add(lblWalkType);
-        walkTypeField = new JTextField("1");
-        walkTypeField.setBounds(220, 140, 100, 20);
-        ((AbstractDocument) walkTypeField.getDocument()).setDocumentFilter(new LengthFilter(1));
-        add(walkTypeField);
+        walkTypeComboBox = new JComboBox<>(walkTypes);
+        walkTypeComboBox.setBounds(220, 140, 100, 20);
+        add(walkTypeComboBox);
 
         JLabel lblDescription = new JLabel("Description");
         lblDescription.setBounds(20, 170, 70, 20);
@@ -116,9 +121,22 @@ public class NPCGenerator extends JFrame {
         multipleCoordsCheckBox.addActionListener(new MultipleCoordsCheckBoxListener());
         add(multipleCoordsCheckBox);
 
-        newFormatCheckBox = new JCheckBox("New Format");
+        anotherFormatCheckBox = new JCheckBox("Zenyte");
+        anotherFormatCheckBox.setBounds(20, 230, 200, 20);
+        anotherFormatCheckBox.addActionListener(new AnotherFormatCheckBoxListener());
+        add(anotherFormatCheckBox);
+
+        newFormatCheckBox = new JCheckBox("Xeros");
         newFormatCheckBox.setBounds(250, 200, 200, 20);
         add(newFormatCheckBox);
+
+        JLabel lblRadius = new JLabel("Radius");
+        lblRadius.setBounds(250, 230, 70, 20);
+        add(lblRadius);
+        radiusField = new JTextField("3");
+        radiusField.setBounds(320, 230, 100, 20);
+        radiusField.setEnabled(false);
+        add(radiusField);
 
         // Coordinate List Section
         JLabel lblCoordList = new JLabel("Coordinates List (x,y,height)");
@@ -160,7 +178,7 @@ public class NPCGenerator extends JFrame {
         // Output Section
         outputArea = new JTextArea();
         JScrollPane scrollPane = new JScrollPane(outputArea);
-        scrollPane.setBounds(20, 240, 700, 350);
+        scrollPane.setBounds(20, 270, 700, 350);
         add(scrollPane);
 
         outputArea.setEditable(false);
@@ -170,7 +188,6 @@ public class NPCGenerator extends JFrame {
         posXField.getDocument().addDocumentListener(new GeneralDocumentListener());
         posYField.getDocument().addDocumentListener(new GeneralDocumentListener());
         heightField.getDocument().addDocumentListener(new GeneralDocumentListener());
-        walkTypeField.getDocument().addDocumentListener(new GeneralDocumentListener());
         descriptionField.getDocument().addDocumentListener(new GeneralDocumentListener());
     }
 
@@ -226,6 +243,14 @@ public class NPCGenerator extends JFrame {
         }
     }
 
+    private class AnotherFormatCheckBoxListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            boolean isSelected = anotherFormatCheckBox.isSelected();
+            radiusField.setEnabled(isSelected);
+        }
+    }
+
     private class GeneralDocumentListener implements DocumentListener {
         @Override
         public void insertUpdate(DocumentEvent e) {
@@ -262,7 +287,7 @@ public class NPCGenerator extends JFrame {
                             int posYInt = Integer.parseInt(posY);
 
                             if (newFormatCheckBox.isSelected()) {
-                                String walkingType = getWalkingType(walkTypeField.getText());
+                                String walkingType = walkTypeComboBox.getSelectedItem().toString();
 
                                 String line = String.format(
                                         "{\n    \"id\": %s,\n    \"position\": {\n      \"x\": %s,\n      \"y\": %s,\n      \"height\": %s\n    },\n    \"walkingType\": \"%s\"\n  }",
@@ -271,6 +296,19 @@ public class NPCGenerator extends JFrame {
                                         posY,
                                         height,
                                         walkingType
+                                );
+                                output.append(line).append(",\n");
+                            } else if (anotherFormatCheckBox.isSelected()) {
+                                String direction = walkTypeComboBox.getSelectedItem().toString().replace("FACE_", "");
+
+                                String line = String.format(
+                                        "{\n    \"id\": %s,\n    \"x\": %s,\n    \"y\": %s,\n    \"z\": %s,\n    \"direction\": \"%s\",\n    \"radius\": %s\n  }",
+                                        npcIdField.getText(),
+                                        posX,
+                                        posY,
+                                        height,
+                                        direction,
+                                        radiusField.getText()
                                 );
                                 output.append(line).append(",\n");
                             } else {
@@ -289,7 +327,7 @@ public class NPCGenerator extends JFrame {
                                         rangeX2,
                                         rangeY1,
                                         rangeY2,
-                                        walkTypeField.getText(),
+                                        getWalkingTypeCode(walkTypeComboBox.getSelectedItem().toString()),
                                         descriptionField.getText()
                                 );
                                 output.append(line).append("\n");
@@ -307,7 +345,7 @@ public class NPCGenerator extends JFrame {
                 }
             } else {
                 if (newFormatCheckBox.isSelected()) {
-                    String walkingType = getWalkingType(walkTypeField.getText());
+                    String walkingType = walkTypeComboBox.getSelectedItem().toString();
 
                     String line = String.format(
                             "{\n    \"id\": %s,\n    \"position\": {\n      \"x\": %s,\n      \"y\": %s,\n      \"height\": %s\n    },\n    \"walkingType\": \"%s\"\n  }",
@@ -316,6 +354,19 @@ public class NPCGenerator extends JFrame {
                             posYField.getText(),
                             heightField.getText(),
                             walkingType
+                    );
+                    output.append(line).append(",\n");
+                } else if (anotherFormatCheckBox.isSelected()) {
+                    String direction = walkTypeComboBox.getSelectedItem().toString().replace("FACE_", "");
+
+                    String line = String.format(
+                            "{\n    \"id\": %s,\n    \"x\": %s,\n    \"y\": %s,\n    \"z\": %s,\n    \"direction\": \"%s\",\n    \"radius\": %s\n  }",
+                            npcIdField.getText(),
+                            posXField.getText(),
+                            posYField.getText(),
+                            heightField.getText(),
+                            direction,
+                            radiusField.getText()
                     );
                     output.append(line).append(",\n");
                 } else {
@@ -329,13 +380,40 @@ public class NPCGenerator extends JFrame {
                             rangeX2Field.getText(),
                             rangeY1Field.getText(),
                             rangeY2Field.getText(),
-                            walkTypeField.getText(),
+                            getWalkingTypeCode(walkTypeComboBox.getSelectedItem().toString()),
                             descriptionField.getText()
                     );
                     output.append(line).append("\n");
                 }
             }
             outputArea.append(output.toString());
+        }
+    }
+
+    private String getWalkingTypeCode(String walkingType) {
+        switch (walkingType) {
+            case "STAND":
+                return "0";
+            case "WALK":
+                return "1";
+            case "FACE_NORTH":
+                return "2";
+            case "FACE_SOUTH":
+                return "3";
+            case "FACE_EAST":
+                return "4";
+            case "FACE_WEST":
+                return "5";
+            case "FACE_NORTH_WEST":
+                return "6";
+            case "FACE_NORTH_EAST":
+                return "7";
+            case "FACE_SOUTH_WEST":
+                return "8";
+            case "FACE_SOUTH_EAST":
+                return "9";
+            default:
+                return "0";
         }
     }
 
@@ -361,33 +439,6 @@ public class NPCGenerator extends JFrame {
             String outputText = outputArea.getText();
             StringSelection stringSelection = new StringSelection(outputText);
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringSelection, null);
-        }
-    }
-
-    private String getWalkingType(String code) {
-        switch (code) {
-            case "0":
-                return "STAND";
-            case "1":
-                return "WALK";
-            case "2":
-                return "FACE_NORTH";
-            case "3":
-                return "FACE_SOUTH";
-            case "4":
-                return "FACE_EAST";
-            case "5":
-                return "FACE_WEST";
-            case "6":
-                return "FACE_NORTH_WEST";
-            case "7":
-                return "FACE_NORTH_EAST";
-            case "8":
-                return "FACE_SOUTH_WEST";
-            case "9":
-                return "FACE_SOUTH_EAST";
-            default:
-                return "STAND";
         }
     }
 
